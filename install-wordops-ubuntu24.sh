@@ -499,6 +499,8 @@ main() {
   install_stack
   configure_ssh_security
   harden_nginx_defaults
+
+  update_system # update wordops packages and dependencies
   summarize
 }
 
