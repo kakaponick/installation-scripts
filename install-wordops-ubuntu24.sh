@@ -260,6 +260,46 @@ install_stack() {
   done
 }
 
+update_wpcommon_robots_rule() {
+  local conf="/etc/nginx/common/wpcommon-php84.conf"
+  local tmp
+
+  if [[ ! -f "${conf}" ]]; then
+    log_warning "Skipping robots rule update; ${conf} not found."
+    return
+  fi
+
+  # Avoid duplicate rewrites if already updated
+  if grep -Fq "location ~ ^/.*robots.*\\.txt$" "${conf}"; then
+    log_info "Robots rule already updated in ${conf}"
+    return
+  fi
+
+  if ! grep -Fq 'location = /robots.txt {' "${conf}"; then
+    log_warning "Expected robots block not found in ${conf}; no changes applied."
+    return
+  fi
+
+  tmp=$(mktemp)
+
+  if sed '/^location = \/robots.txt {$/,/^}/c\
+location ~ ^/.*robots.*\\.txt$ {\
+# Some WordPress plugin gererate robots.txt file\
+# Refer #340 issue\
+    rewrite ^/robots.txt$ /?robots=1 last;\
+    rewrite ^/([^/]+?)-robots([0-9]+)?.txt$ /?robots=$1&robots_n=$2 last;\
+    try_files $uri $uri/ /index.php?$args @robots;\
+    access_log off;\
+    log_not_found off;\
+}' "${conf}" > "${tmp}"; then
+    mv "${tmp}" "${conf}"
+    log_success "Updated robots rule in ${conf}"
+  else
+    rm -f "${tmp}"
+    fail "Failed to update robots rule in ${conf}"
+  fi
+}
+
 harden_nginx_defaults() {
   log_step "Hardening Nginx default site"
 
@@ -289,6 +329,7 @@ server {
 EOF
 
   ln -sf /etc/nginx/sites-available/default /etc/nginx/sites-enabled/default
+  update_wpcommon_robots_rule
 
   if nginx -t; then
     systemctl reload nginx 2>/dev/null || service nginx reload 2>/dev/null || log_warning "Nginx reload failed; please reload manually."
