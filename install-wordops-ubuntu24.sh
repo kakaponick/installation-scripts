@@ -356,9 +356,42 @@ ClientAliveCountMax 2
 EOF
 
   if sshd -t -f /etc/ssh/sshd_config; then
-    systemctl reload ssh 2>/dev/null || log_warning "SSH reload failed; please reload manually."
+    local ssh_socket_unit="ssh.socket"
+    local ssh_service_unit="ssh.service"
+    local socket_present=false
+
+    if systemctl list-unit-files --type=socket 2>/dev/null | awk '{print $1}' | grep -qx "${ssh_socket_unit}"; then
+      socket_present=true
+      systemctl stop "${ssh_socket_unit}" 2>/dev/null || true
+      systemctl disable "${ssh_socket_unit}" 2>/dev/null || true
+      systemctl mask "${ssh_socket_unit}" 2>/dev/null || true
+      log_info "Disabled ${ssh_socket_unit} to allow custom SSH port ${SSH_PORT}"
+    fi
+
+    systemctl enable "${ssh_service_unit}" 2>/dev/null || true
+
+    if systemctl restart "${ssh_service_unit}" 2>/dev/null; then
+      log_info "Restarted ${ssh_service_unit} on port ${SSH_PORT}"
+    else
+      log_warning "SSH restart failed; attempting to recover via ${ssh_socket_unit}"
+      if [[ "${socket_present}" == true ]]; then
+        systemctl unmask "${ssh_socket_unit}" 2>/dev/null || true
+        systemctl enable "${ssh_socket_unit}" 2>/dev/null || true
+        systemctl start "${ssh_socket_unit}" 2>/dev/null || true
+      fi
+      fail "Could not restart SSH service; please check logs."
+    fi
   else
     fail "sshd configuration invalid; aborting to avoid lockout."
+  fi
+
+  if ! ss -tln 2>/dev/null | awk '{print $4}' | grep -qE "[:.]${SSH_PORT}$"; then
+    if systemctl list-unit-files --type=socket 2>/dev/null | awk '{print $1}' | grep -qx "ssh.socket"; then
+      systemctl unmask ssh.socket 2>/dev/null || true
+      systemctl enable ssh.socket 2>/dev/null || true
+      systemctl start ssh.socket 2>/dev/null || true
+    fi
+    fail "sshd is not listening on port ${SSH_PORT} after restart; check sshd logs."
   fi
 
   if command -v ufw >/dev/null 2>&1; then
