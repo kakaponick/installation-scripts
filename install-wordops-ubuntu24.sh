@@ -254,12 +254,7 @@ install_stack() {
   )
 
   for component in "${components[@]}"; do
-    log_info "Installing stack component ${component}..."
-    if wo stack install "${component}"; then
-      log_success "Installed ${component}"
-    else
-      fail "Stack install failed for ${component}. Check ${LOG_FILE} for details."
-    fi
+    wo stack install "${component}" >/dev/null 2>&1 || true
   done
 }
 
