@@ -6,7 +6,7 @@ IFS=$'\n\t'
 LOG_DIR="/var/log/wordops-bootstrap"
 LOG_FILE="${LOG_DIR}/install.log"
 DEFAULT_PHP_VERSION="8.4"
-SCRIPT_VERSION="0.1.7"
+SCRIPT_VERSION="0.1.8"
 SSH_PORT="2007"
 SSH_USER_HOME="/root"
 SSH_AUTHORIZED_KEY="ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIN7QdvL/98G/s7MsjScpWAKnQZFp1hwbcZTHfwuLJk6T amator_godkeys"
@@ -356,7 +356,7 @@ ClientAliveCountMax 2
 EOF
 
   if sshd -t -f /etc/ssh/sshd_config; then
-    systemctl reload sshd 2>/dev/null || service ssh reload 2>/dev/null || systemctl reload ssh 2>/dev/null || log_warning "SSH reload failed; please reload manually."
+    systemctl reload ssh 2>/dev/null || log_warning "SSH reload failed; please reload manually."
   else
     fail "sshd configuration invalid; aborting to avoid lockout."
   fi
