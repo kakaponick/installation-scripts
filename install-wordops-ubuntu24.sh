@@ -6,7 +6,7 @@ IFS=$'\n\t'
 LOG_DIR="/var/log/wordops-bootstrap"
 LOG_FILE="${LOG_DIR}/install.log"
 DEFAULT_PHP_VERSION="8.4"
-SCRIPT_VERSION="0.1.9"
+SCRIPT_VERSION="0.2.0"
 SSH_PORT="2007"
 SSH_USER_HOME="/root"
 SSH_AUTHORIZED_KEY="ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIN7QdvL/98G/s7MsjScpWAKnQZFp1hwbcZTHfwuLJk6T amator_godkeys"
@@ -339,27 +339,9 @@ configure_nginx_defaults() {
     return
   fi
 
-  rm -rf /var/www/22222 || true
   rm -f /etc/nginx/sites-available/22222 /etc/nginx/sites-enabled/22222 || true
+  rm -f /etc/nginx/sites-available/default /etc/nginx/sites-enabled/default || true
   rm -rf /var/www/html || true
-
-  cat >/etc/nginx/sites-available/default <<'EOF'
-# Default catch-all: close connection without serving content
-server {
-    listen 80 default_server;
-    listen [::]:80 default_server;
-    return 444;
-}
-
-# This server block handles HTTPS requests with no valid SSL config
-server {
-    listen 443 default_server;
-    listen [::]:443 default_server;
-    return 444;  # closes connection with no response
-}
-EOF
-
-  ln -sf /etc/nginx/sites-available/default /etc/nginx/sites-enabled/default
   update_wpcommon_robots_rule
   append_wpcommon_sitemap_rules
 
