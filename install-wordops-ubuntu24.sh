@@ -6,7 +6,7 @@ IFS=$'\n\t'
 LOG_DIR="/var/log/wordops-bootstrap"
 LOG_FILE="${LOG_DIR}/install.log"
 DEFAULT_PHP_VERSION="8.4"
-SCRIPT_VERSION="0.2.0"
+SCRIPT_VERSION="0.2.1"
 SSH_PORT="2007"
 SSH_USER_HOME="/root"
 SSH_AUTHORIZED_KEY="ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIN7QdvL/98G/s7MsjScpWAKnQZFp1hwbcZTHfwuLJk6T amator_godkeys"
@@ -236,6 +236,35 @@ install_wordops() {
   log_success "WordOps installation completed"
 }
 
+configure_wordops_php_version() {
+  log_step "Configuring WordOps default PHP version"
+  
+  local wo_conf="/etc/wo/wo.conf"
+  
+  if [[ ! -f "${wo_conf}" ]]; then
+    log_warning "WordOps config file ${wo_conf} not found. Skipping PHP version configuration."
+    return
+  fi
+
+  # Check if version is already set to the desired value
+  if grep -qE "^version\s*=\s*${DEFAULT_PHP_VERSION}" "${wo_conf}"; then
+    log_info "PHP version already set to ${DEFAULT_PHP_VERSION} in ${wo_conf}"
+    return
+  fi
+
+  # Update the version line using sed
+  local tmp
+  tmp=$(mktemp)
+  
+  if sed -E "s/^version\s*=\s*[0-9.]+/version = ${DEFAULT_PHP_VERSION}/" "${wo_conf}" > "${tmp}"; then
+    mv "${tmp}" "${wo_conf}"
+    log_success "Updated default PHP version to ${DEFAULT_PHP_VERSION} in ${wo_conf}"
+  else
+    rm -f "${tmp}"
+    fail "Failed to update PHP version in ${wo_conf}"
+  fi
+}
+
 install_stack() {
   log_step "Installing WordOps stack components"
   
@@ -256,8 +285,13 @@ install_stack() {
   )
 
   for component in "${components[@]}"; do
-    wo stack install "${component}" >/dev/null 2>&1 || true
+    log_info "Installing WordOps component ${component}"
+    if ! wo stack install "${component}"; then
+      fail "WordOps stack install failed for ${component}. Check ${LOG_FILE} for details."
+    fi
   done
+
+  log_success "WordOps stack components installed"
 }
 
 update_wpcommon_robots_rule() {
@@ -517,6 +551,7 @@ main() {
   update_system
   install_prerequisites
   install_wordops
+  configure_wordops_php_version
   install_stack
   configure_ssh_security
   configure_nginx_defaults
