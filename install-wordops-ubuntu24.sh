@@ -6,7 +6,7 @@ IFS=$'\n\t'
 LOG_DIR="/var/log/wordops-bootstrap"
 LOG_FILE="${LOG_DIR}/install.log"
 DEFAULT_PHP_VERSION="8.4"
-SCRIPT_VERSION="0.2.1"
+SCRIPT_VERSION="0.2.2"
 SSH_PORT="2007"
 SSH_USER_HOME="/root"
 SSH_AUTHORIZED_KEY="ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIN7QdvL/98G/s7MsjScpWAKnQZFp1hwbcZTHfwuLJk6T amator_godkeys"
@@ -281,7 +281,6 @@ install_stack() {
     "--fail2ban"
     "--ufw"
     "--ngxblocker"
-    "--brotli"
   )
 
   for component in "${components[@]}"; do
